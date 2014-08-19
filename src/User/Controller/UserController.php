@@ -6,10 +6,10 @@
 namespace User\Controller;
 
 use Acl\Model\Parts\AclController;
-use DeltaCore\Exception\AccessDeniedException;
 use DeltaRouter\Exception\NotFoundException;
 use PermAuth\Model\Authenticator;
 use PermAuth\Model\TokenManager;
+use User\Exception\UserAlreadyExists;
 use User\Model\UserManager;
 use DeltaCore\AbstractController;
 
@@ -41,7 +41,7 @@ class UserController extends AbstractController
         if ($isPermAuthOption) {
             $user = $permManager->authenticate();
             if ($user) {
-                return $this->processLoginResult($user, true);
+                $this->processLoginResult($user, true);
             }
         }
         $request = $this->getRequest();
@@ -50,15 +50,33 @@ class UserController extends AbstractController
             $password = $request->getParam('password');
             $remember = $request->getParam("remember", false);
             $user = $userManager->authenticate($email, $password);
-            return $this->processLoginResult($user, $remember);
+            $this->processLoginResult($user, $remember);
+        }
+    }
+
+    public function registrationAction()
+    {
+        $app = $this->getApplication();
+        /** @var UserManager $userManager */
+        $userManager = $app['userManager'];
+        $request = $this->getRequest();
+        if ($request->isPost()) {
+            $email = $request->getParam('email');
+            $password = $request->getParam('password');
+            try {
+                $user = $userManager->addUser($email, $password);
+            } catch (UserAlreadyExists $e) {
+                $this->getView()->assign('error', 'Такой пользователь уже зарегистрирован');
+                return;
+            }
+            $this->processLoginResult($user);
         }
     }
 
     public function processLoginResult($user = null, $remember = false)
     {
         if (!$user) {
-            $this->autoRenderOff();
-            return $this->getResponse()->redirect("/login");
+            $this->getResponse()->redirect("/login");
         }
         $app = $this->getApplication();
         /** @var UserManager $userManager */
@@ -71,7 +89,7 @@ class UserController extends AbstractController
                 $permManager->setToken($user);
             }
         }
-        return $this->getResponse()->redirect("/user");
+        $this->getResponse()->redirect("/user");
     }
 
     public function logoutAction()

@@ -8,6 +8,7 @@ namespace User\Model;
 use DeltaDb\EntityInterface;
 use DeltaDb\Repository;
 use PermAuth\Model\Authenticator;
+use User\Exception\UserAlreadyExists;
 
 class UserManager extends Repository
 {
@@ -89,7 +90,6 @@ class UserManager extends Repository
         return $data;
     }
 
-
     public function authenticate($email, $password)
     {
         $table = $this->getTableName("\\User\\Model\\User");
@@ -144,12 +144,16 @@ class UserManager extends Repository
     {
         $someUser = $this->findByEmail($email);
         if ($someUser) {
-            return false;
+            throw new UserAlreadyExists();
         }
         /** @var User $user */
         $user = $this->create();
         $user->setEmail($email);
         $user->setNewPassword($password);
+        $groups = $this->getGroupManager()->find(['name' =>'user']);
+        if (count($groups)) {
+            $user->setGroup($groups[0]);
+        }
         $this->save($user);
         return $user;
     }
