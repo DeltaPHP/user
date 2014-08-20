@@ -23,7 +23,16 @@
                                 </label>
                             </div>
                             {% endif %}
+                            {% if error %}
+                                <div class="alert alert-danger">
+                                    <p>{{ error }}</p>
+                                </div>
+                            {% endif %}
                             <input class="btn btn-lg btn-success btn-block" type="submit" value="Login">
+                            <br/>
+                                <p>
+                                    <a href="/registration">Регистрация</a>
+                                </p>
                         </fieldset>
                     </form>
                 </div>

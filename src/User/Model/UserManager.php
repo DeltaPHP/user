@@ -8,6 +8,9 @@ namespace User\Model;
 use DeltaDb\EntityInterface;
 use DeltaDb\Repository;
 use PermAuth\Model\Authenticator;
+use User\Exception\UserAlreadyExists;
+use User\Exception\UserNotFound;
+use User\Exception\WrongUserCredential;
 
 class UserManager extends Repository
 {
@@ -89,18 +92,22 @@ class UserManager extends Repository
         return $data;
     }
 
-
     public function authenticate($email, $password)
     {
         $table = $this->getTableName("\\User\\Model\\User");
         $adapter = $this->getAdapter();
         $data = $adapter->selectBy($table, ["email" => $email]);
         if (empty($data)) {
-            return false;
+            throw new UserNotFound();
         }
         $data = reset($data);
-        return (empty($data)) ? false :
-            !User::verifyPassword($password,$data['password']) ? false : $this->findById($data['id']);
+        if (empty($data)) {
+            throw new UserNotFound();
+        }
+        if (!User::verifyPassword($password,$data['password'])) {
+            throw new WrongUserCredential();
+        }
+        return $this->findById($data['id']);
     }
 
     public function findByEmail($email)
@@ -144,12 +151,16 @@ class UserManager extends Repository
     {
         $someUser = $this->findByEmail($email);
         if ($someUser) {
-            return false;
+            throw new UserAlreadyExists();
         }
         /** @var User $user */
         $user = $this->create();
         $user->setEmail($email);
         $user->setNewPassword($password);
+        $groups = $this->getGroupManager()->find(['name' =>'user']);
+        if (count($groups)) {
+            $user->setGroup($groups[0]);
+        }
         $this->save($user);
         return $user;
     }
