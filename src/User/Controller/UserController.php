@@ -10,6 +10,8 @@ use DeltaRouter\Exception\NotFoundException;
 use PermAuth\Model\Authenticator;
 use PermAuth\Model\TokenManager;
 use User\Exception\UserAlreadyExists;
+use User\Exception\UserNotFound;
+use User\Exception\WrongUserCredential;
 use User\Model\UserManager;
 use DeltaCore\AbstractController;
 
@@ -49,7 +51,15 @@ class UserController extends AbstractController
             $email = $request->getParam('email');
             $password = $request->getParam('password');
             $remember = $request->getParam("remember", false);
-            $user = $userManager->authenticate($email, $password);
+            try {
+                $user = $userManager->authenticate($email, $password);
+            } catch (UserNotFound $e) {
+                $this->getView()->assign('error', 'Не найден пользователь');
+                return;
+            } catch (WrongUserCredential $e) {
+                $this->getView()->assign('error', 'Неправильный пароль');
+                return;
+            }
             $this->processLoginResult($user, $remember);
         }
     }
